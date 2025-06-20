@@ -15,18 +15,15 @@ let db;
 
 (async () => {
   try {
-    // Connect to MySQL without specifying a database
     const connection = await mysql.createConnection({
       host: 'localhost',
       user: 'root',
-      password: 'Chenweiyu101' // Set your MySQL root password
+      password: 'Chenweiyu101'
     });
 
-    // Create the database if it doesn't exist
     await connection.query('CREATE DATABASE IF NOT EXISTS testdb');
     await connection.end();
 
-    // Now connect to the created database
     db = await mysql.createConnection({
       host: 'localhost',
       user: 'root',
@@ -34,7 +31,6 @@ let db;
       database: 'testdb'
     });
 
-    // Create a table if it doesn't exist
     await db.execute(`
       CREATE TABLE IF NOT EXISTS books (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -43,7 +39,6 @@ let db;
       )
     `);
 
-    // Insert data if table is empty
     const [rows] = await db.execute('SELECT COUNT(*) AS count FROM books');
     if (rows[0].count === 0) {
       await db.execute(`
@@ -53,29 +48,66 @@ let db;
         ('Brave New World', 'Aldous Huxley')
       `);
     }
+
+    const usersRouter = require('./routes/users');
+    app.use('/users', usersRouter);
+
+    app.use(express.static(path.join(__dirname, 'public')));
+
+    app.get('/api/dogs', async (req, res) => {
+      try {
+        const [rows] = await db.execute(`
+          SELECT d.name AS dog_name, d.size, u.username AS owner_username
+          FROM dogs d
+          JOIN users u ON d.owner_id = u.user_id
+        `);
+        res.json(rows);
+      } catch (err) {
+        console.error('/api/dogs error:', err);
+        res.status(500).json({ error: 'Database error' });
+      }
+    });
+
+    app.get('/api/walkrequests/open', async (req, res) => {
+      try {
+        const [rows] = await db.execute(`
+          SELECT wr.request_id, d.name AS dog_name, wr.requested_time, wr.duration_minutes, wr.location, u.username AS owner_username
+          FROM walkrequests wr
+          JOIN dogs d ON wr.dog_id = d.dog_id
+          JOIN users u ON d.owner_id = u.user_id
+          WHERE wr.status = 'open'
+        `);
+        res.json(rows);
+      } catch (err) {
+        console.error('/api/walkrequests/open error:', err);
+        res.status(500).json({ error: 'Database error' });
+      }
+    });
+
+    app.get('/api/walkers/summary', async (req, res) => {
+      try {
+        const [rows] = await db.execute(`
+          SELECT
+            w.username AS walker_username,
+            COUNT(r.rating) AS total_ratings,
+            ROUND(AVG(r.rating), 1) AS average_rating,
+            COUNT(wr.request_id) AS completed_walks
+          FROM users w
+          LEFT JOIN walkrequests wr ON w.user_id = wr.walker_id AND wr.status = 'completed'
+          LEFT JOIN ratings r ON wr.request_id = r.request_id
+          WHERE w.role = 'walker'
+          GROUP BY w.username
+        `);
+        res.json(rows);
+      } catch (err) {
+        console.error('/api/walkers/summary error:', err);
+        res.status(500).json({ error: 'Database error' });
+      }
+    });
+
   } catch (err) {
-    console.error('Error setting up database. Ensure Mysql is running: service mysql start', err);
+    console.error('Startup error:', err);
   }
 })();
-
-// Route to return books as JSON
-app.get('/', async (req, res) => {
-  try {
-    const [books] = await db.execute('SELECT * FROM books');
-    res.json(books);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch books' });
-  }
-});
-
-const usersRouter = require('./routes/users');
-app.use('/users', usersRouter);
-
-const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
-
-app.use(express.static(path.join(__dirname, 'public')));
 
 module.exports = app;
