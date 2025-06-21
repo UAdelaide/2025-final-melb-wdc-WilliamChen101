@@ -18,9 +18,11 @@ app.use(session({
 app.use(express.static(path.join(__dirname, '/public')));
 
 const walkRoutes = require('./routes/walkRoutes');
+const dogRoutes  = require('./routes/dogRoutes'); //ADD q15
 const userRoutes = require('./routes/userRoutes');
 
 app.use('/api/walks', walkRoutes);
+app.use('/api/dogs', dogRoutes); //ADD q15
 app.use('/api/users', userRoutes);
 app.use('/', userRoutes); 
 

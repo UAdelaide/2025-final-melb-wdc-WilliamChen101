@@ -10,9 +10,9 @@
 <body class="bg-light">
   <div id="app" class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="text-primary">Owner Dashboard</h1>
-  <button id="logoutBtn" class="btn btn-secondary">Esc</button>
-</div>
+      <h1 class="text-primary">Owner Dashboard</h1>
+      <button id="logoutBtn" class="btn btn-secondary">Esc</button>
+    </div>
 
     <!-- Walk request form -->
     <div class="card mb-4">
@@ -22,8 +22,10 @@
       <div class="card-body">
         <form @submit.prevent="submitWalkRequest">
           <div class="mb-3">
-            <label class="form-label">Dog ID</label>
-            <input v-model="form.dog_id" type="number" class="form-control" required>
+            <label for="dogId" class="form-label">Select Your Dog</label>
+           <select id="dogId" name="dog_id" v-model="form.dog_id" class="form-select" required>
+              <option value="">-- Choose a dog --</option>
+            </select>
           </div>
           <div class="mb-3">
             <label class="form-label">Requested Date & Time</label>
@@ -81,7 +83,7 @@
 
         const walks = ref([]);
         const message = ref('');
-        const error = ref('');
+        const error   = ref('');
 
         async function loadWalks() {
           try {
@@ -91,6 +93,23 @@
             error.value = 'Failed to load walk requests';
           }
         }
+
+
+       async function loadDogs() {
+         try {
+           const res = await fetch('/api/dogs');
+           const dogs = await res.json();
+           const sel = document.getElementById('dogId');
+           dogs.forEach(dog => {
+             const opt = document.createElement('option');
+              opt.value = dog.dog_id;
+             opt.textContent = dog.name;
+             sel.appendChild(opt);
+           });
+         } catch (err) {
+           console.error(err);
+         }
+       }
 
         async function submitWalkRequest() {
           try {
@@ -118,9 +137,10 @@
           }
         }
 
-        onMounted(() => {
-          loadWalks();
-        });
+       onMounted(() => {
+         loadWalks();
+         loadDogs();    
+       });
 
         return {
           form,
@@ -135,12 +155,12 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<script>
-  document.getElementById('logoutBtn')
-    .addEventListener('click', () => {
-      window.location.href = '/logout';
-    });
-</script>
+  <script>
+    document.getElementById('logoutBtn')
+      .addEventListener('click', () => {
+        window.location.href = '/logout';
+      });
+  </script>
 </body>
 </html>
 
