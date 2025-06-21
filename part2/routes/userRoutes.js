@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const db = require('../models/db');
 
-）
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -38,6 +37,13 @@ router.post('/login', async (req, res) => {
     console.error('❌ login error:', error);
     res.status(500).send('Login failed');
   }
+});
+
+router.get('/logout', (req, res) => {
+  req.session.destroy(err => {
+    res.clearCookie('connect.sid');
+    res.redirect('/');
+  });
 });
 
 module.exports = router;

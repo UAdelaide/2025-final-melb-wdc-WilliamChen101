@@ -2,8 +2,20 @@ const express = require('express');
 const router = express.Router();
 const db = require('../models/db');
 
+
+router.use((req, res, next) => {
+  if (!req.session.user) {
+    return res.status(401).send('Unauthorized: please log in');
+  }
+  next();
+});
+
 // GET all walk requests (for walkers to view)
 router.get('/', async (req, res) => {
+  if (req.session.user.role !== 'walker') {
+    return res.status(403).send('Forbidden: Only Walker can view.');
+  }
+
   try {
     const [rows] = await db.query(`
       SELECT wr.*, d.name AS dog_name, d.size, u.username AS owner_name
@@ -21,7 +33,13 @@ router.get('/', async (req, res) => {
 
 // POST a new walk request (from owner)
 router.post('/', async (req, res) => {
-  const { dog_id, requested_time, duration_minutes, location } = req.body;
+  if (req.session.user.role !== 'owner') {
+    return res.status(403).send('Forbidden: Only the owner can create.');
+  }
+
+  const { dog_id, datetime, duration, location } = req.body;
+  const requested_time   = datetime;
+  const duration_minutes = duration;
 
   try {
     const [result] = await db.query(`
@@ -31,14 +49,19 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({ message: 'Walk request created', request_id: result.insertId });
   } catch (error) {
+    console.error('SQL Error:', error);
     res.status(500).json({ error: 'Failed to create walk request' });
   }
 });
 
 // POST an application to walk a dog (from walker)
 router.post('/:id/apply', async (req, res) => {
+  if (req.session.user.role !== 'walker') {
+    return res.status(403).send('Forbidden: ');
+  }
+
   const requestId = req.params.id;
-  const { walker_id } = req.body;
+  const walker_id = req.session.user.id;
 
   try {
     await db.query(`
